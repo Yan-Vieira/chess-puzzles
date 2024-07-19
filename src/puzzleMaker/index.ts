@@ -4,9 +4,11 @@ import type { Root } from "react-dom/client"
 import { Modal } from "obsidian"
 import { createRoot } from "react-dom/client"
 
+import { Chess } from "chess.js"
+
 import Main from "./Main"
 
-export default class PuzzleMaker extends Modal {
+export default class PuzzlePlayer extends Modal {
     root:Root|null
 
     constructor (app:App) {
@@ -17,10 +19,11 @@ export default class PuzzleMaker extends Modal {
 
     onOpen() {
         const containerEl = this.containerEl.getElementsByClassName("modal-content")[0]
+        const chessjsInstance = new Chess()
         
         this.root = createRoot(containerEl)
 
-        this.root.render(Main({ vault: this.app.vault }))
+        this.root.render(Main({ vault: this.app.vault, chessjsInstance }))
     }
 
     onClose() {
