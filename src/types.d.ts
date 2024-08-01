@@ -4,10 +4,12 @@ declare namespace ChessPuzzles {
 
 	type Move = {
 		number: number,
+		count: number,
 		color: "white"|"black",
 		from: string,
 		to: string,
 		san: string,
+		fen: string,
 		value: MoveValue,
 		comment?: string
 	}
