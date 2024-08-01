@@ -2,17 +2,23 @@ import { Notice } from "obsidian"
 
 import { validateFen } from "chess.js"
 
+import { useEffect, useState } from "react"
+
 import { FaCheck } from "react-icons/fa"
+import { IoClose } from "react-icons/io5"
 
 interface Props {
-    isOpen: boolean,
-    setIsOpen: React.Dispatch<React.SetStateAction<boolean>>,
-    fen: React.MutableRefObject<string>,
-    //setPuzzle: React.Dispatch<React.SetStateAction<ChessPuzzles.Puzzle>>,
-    updateFen: React.Dispatch<{newFen?: string}>
+    startingPosition: string,
+    updateStartingPosition: React.Dispatch<{newFen: string}>
 }
 
-export default function FenEditor ({ isOpen, setIsOpen, fen, updateFen }:Props) {
+export default function FenEditor ({ startingPosition, updateStartingPosition }:Props) {
+
+    const [isOpen, setIsOpen] = useState(false)
+
+    const [value, setValue] = useState(startingPosition)
+
+    useEffect(() => setValue(startingPosition), [startingPosition])
 
     return (
         <>
@@ -25,30 +31,40 @@ export default function FenEditor ({ isOpen, setIsOpen, fen, updateFen }:Props) 
             <>
             <input
                 type="text"
-                defaultValue={fen.current}
-                onChange={(e) => fen.current = e.target.value}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
             />
 
             <button
                 onClick={() => {
-                    const isFenValid = validateFen(fen.current)
+                    const isFenValid = validateFen(value)
 
                     if (!isFenValid.ok) {
                         
-                        new Notice(`Puzzle maker errror - ${isFenValid.error}`, 6000)
+                        new Notice(isFenValid.error || "Chess puzzles uncaught error", 6000)
 
-                        return
+                        return;
                     }
 
-                    //setPuzzle(prev => ({...prev, fen: fen.current}))
-
-                    updateFen({newFen: fen.current})
+                    updateStartingPosition({newFen: value})
 
                     setIsOpen(false)
                 }}
             >
                 <FaCheck/>
             </button>
+
+            <button
+                onClick={() => {
+
+                    setIsOpen(false)
+
+                    setValue(startingPosition)
+                }}>
+                <IoClose/>
+            </button>
+
+            <p>ATTENTION! Permanently saving this change resets all moves in puzzle</p>
             </>
         )}
         </>

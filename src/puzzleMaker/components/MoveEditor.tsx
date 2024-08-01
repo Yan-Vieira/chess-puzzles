@@ -6,11 +6,9 @@ interface Props {
 
 export default function MoveEditor ({ move, updateMove }:Props) {
 
-
-
     return (
         <div>
-            <h1>{move ? `${move?.number}.${move?.color === "black" ? " ... , ": " "}${move?.san}` : "1. ..."}</h1>
+            <h1>{move ? `${move.number}.${move.color === "black" ? " ... , ": " "}${move.san}` : "1."}</h1>
 
             <label htmlFor="value">Value</label>
             <select

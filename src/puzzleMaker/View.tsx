@@ -1,11 +1,11 @@
 import type { Vault } from "obsidian"
 import type { Chess } from "chess.js"
 
-import { useState, useRef } from "react"
 import useChess from "@/hooks/useChess"
 
 import Chessground from "@react-chess/chessground"
-import { FenEditor, MoveEditor } from "./components"
+import { FenEditor, MoveEditor, PlayerColor, MovesHistory } from "./components"
+import { IoIosUndo } from "react-icons/io"
 
 interface Props {
     vault: Vault,
@@ -16,18 +16,18 @@ export default function View ({ vault, chessjsInstance }:Props) {
 
     const chess = useChess(chessjsInstance)
 
-    const [isFenEditorOpen, setIsFenEditorOpen] = useState(false)
-    const FenInputRef = useRef(chess.fen)
-
     return (
         <main>
+
             <Chessground
                 width={320}
                 height={320}
                 config={{
                     coordinates: false,
-                    fen: chess.fen,
+                    fen: chess.currentPosition,
                     turnColor: chess.turn,
+                    orientation: chess.playerColor,
+                    viewOnly: chess.viewOnly,
                     movable: {
                         free: false,
                         //@ts-ignore
@@ -38,19 +38,26 @@ export default function View ({ vault, chessjsInstance }:Props) {
 
                             chess.move(from, to)
 
-
                         }
                     }
                 }}
             />
 
-            <FenEditor
-                isOpen={isFenEditorOpen}
-                setIsOpen={setIsFenEditorOpen}
-                fen={FenInputRef}
-                //setPuzzle={setPuzzle}
-                updateFen={chess.updateFen}
+            <MovesHistory
+                movesNumber={chess.currentMove?.number || 0}
+                moves={chess.moves}
+                showPreviousPosition={chess.showPreviousPosition}
+                showCurrentPosition={chess.showCurrentPosition}
             />
+
+            <FenEditor
+                startingPosition={chess.startingPosition}
+                updateStartingPosition={chess.updateStartingPosition}
+            />
+
+            <button onClick={() => chess.undoHalfMove()}>
+                <IoIosUndo/>
+            </button>
 
             <MoveEditor
                 move={chess.currentMove}

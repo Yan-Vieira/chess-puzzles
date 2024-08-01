@@ -2,20 +2,44 @@ import type { Chess } from "chess.js"
 
 import { Notice } from "obsidian"
 
-import { useEffect, useState, useReducer, useRef } from "react"
+import { useEffect, useReducer, useState } from "react"
 
-export default function useChess (chessjs:Chess, startPosition?:string) {
+export default function useChess (chessjs:Chess, initialPosition?:string) {
+
+    const [viewOnly, setViewOnly] = useState(false)
 
     //#region reducers
-    const [fen, updateFen] = useReducer((state:string, {newFen}:{newFen?:string}) => {
+ 
+    const [playerColor, updatePlayerColor] = useReducer(() => {
 
-        if (newFen) {
-            
-            chessjs.load(newFen)
+        if (chessjs.fen().search("w") > 0) return "white"
+        
+        return "black"
+        
+    }, "white")
 
-            return newFen
-            
-        } else return chessjs.fen()
+    const [startingPosition, updateStartingPosition] = useReducer((state:string, {newFen}:{newFen:string}) => {
+
+        if (newFen === state) return state
+          
+            try {
+
+                chessjs.load(newFen)
+
+                return newFen
+                
+            } catch (error) {
+
+                new Notice(error, 6000)
+                
+                return chessjs.fen()
+            }
+
+    }, chessjs.fen())
+
+    const [currentPosition, updateCurrentPosition] = useReducer((state:string, {fen}:{fen?:string}) => {
+
+        return fen ? fen : chessjs.fen()
 
     }, chessjs.fen())
 
@@ -59,34 +83,77 @@ export default function useChess (chessjs:Chess, startPosition?:string) {
 
     })
 
-    const [history, updateHistory] = useReducer(() => {
-
-        return chessjs.history({ verbose: true })
-
-    }, chessjs.history({ verbose: true }))
-
     const [turn, updateTurn] = useReducer(() => {
 
         return chessjs.turn() === "w" ? "white" : "black"
 
     }, "white", () => chessjs.turn() === "w" ? "white" : "black")
 
-    const [currentMove, updateCurrentMove] = useReducer((state = null, {value}:{value?: ChessPuzzles.MoveValue}) => {
+    const [moves, updateMoves] = useReducer((state:ChessPuzzles.Move[], {actionType, newMove}:{actionType:"PUSH"|"POP", newMove?:ChessPuzzles.Move}) => {
 
-        const lastMove = history.last()
+        let result:ChessPuzzles.Move[] = [...state]
+
+        const cases = {
+            "PUSH": () => {
+
+                if (newMove) {
+
+                    result.push(newMove)
+                } else new Notice(`Internal error: action.newMove is undefined. At useChess > setMoves({${actionType}, ${newMove}}) dispatch`, 6000)
+            },
+            "POP": () => {
+
+                result.pop()
+            }
+        }
+
+        cases[actionType]()
+
+        return result
+    }, [])
+
+    const [currentMove, updateCurrentMove] = useReducer((state:ChessPuzzles.Move|null, {value, onlyUndo}:{value?: ChessPuzzles.MoveValue, onlyUndo?:boolean}) => {
+
+        if (onlyUndo === true) {
+
+            const previousMove = moves.last()
+
+            if (previousMove) {
+
+                return previousMove
+
+            } else return null
+        }
+
+        if (value && state) {
+
+            const lastMove = moves.last()
+
+            if (lastMove) {lastMove.value = value}
+
+            return {...state, value}
+        }
+
+        const lastMove = chessjs.history({ verbose: true }).last()
 
         if (!lastMove) return null
 
         const san = lastMove.san
+        const fen = lastMove.after
+
+        const moveNumber = lastMove.color === "w" ? chessjs.moveNumber() : chessjs.moveNumber() - 1
 
         const newMove = {
-            number: chessjs.moveNumber(),
+            number: moveNumber,
             color: lastMove.color === "w" ? "white" : "black",
             from: lastMove.from,
             to: lastMove.to,
             value: value || "undefined",
             san,
+            fen
         } as ChessPuzzles.Move
+
+        updateMoves({actionType: "PUSH", newMove})
 
         return newMove
 
@@ -94,7 +161,7 @@ export default function useChess (chessjs:Chess, startPosition?:string) {
 
     //#endregion
 
-    const moves = useRef<ChessPuzzles.Move[]>([])
+    useEffect(() => updateCurrentPosition({}), [startingPosition])
 
     useEffect(() => {
 
@@ -102,60 +169,98 @@ export default function useChess (chessjs:Chess, startPosition?:string) {
 
         updateDests()
 
-        updateCurrentMove({})
-
-        if (!currentMove) return;
-
-        moves.current.push(currentMove)
-
-    }, [fen])
+    }, [currentPosition])
 
     const move = (from:string, to:string) => {
 
         try {
 
-            const san = chessjs.move({ from, to }).san
-
-            updateFen({})
-
-            updateHistory()
-
-            updateCurrentMove({})
+            chessjs.move({ from, to })
 
         } catch (error) {
 
-            chessjs.reset()
-
-            updateFen({})
-
-            updateHistory()
-
             new Notice(error, 6000)
 
-            return null
+        } finally {
+            
+            updateCurrentPosition({})
+
+            updateCurrentMove({})
         }
+    }
+
+    const undoHalfMove = () => {
+
+        chessjs.undo()
+
+        moves.pop()
+
+        updateCurrentMove({onlyUndo: true})
+
+        updateCurrentPosition({})
+    }
+
+    const showPreviousPosition = (moveNumber:number, color:"white"|"black") => {
+
+        try {
+
+            setViewOnly(true)
+
+            const move = moves.find(value => value.number === moveNumber || value.color === color)
+
+            if (move) {
+
+                updateCurrentPosition({fen: move.fen})
+            }
+
+        } catch (error) {
+
+            new Notice(error, 6000)
+        }
+    }
+
+    const showCurrentPosition = () => {
+
+        const lastMove = moves.last()
+
+        if (lastMove) {
+
+            updateCurrentPosition({fen: lastMove.fen})
+        } else new Notice("Error: no moves yet. (useChess > showCurrentPosition)", 6000)
+
+        setViewOnly(false)
     }
 
     //#region onInit
 
-    if (startPosition) {
+    if (initialPosition) {
 
-        chessjs.load(startPosition)
+        chessjs.load(initialPosition)
 
-        updateFen({newFen: startPosition})
+        updateStartingPosition({newFen: initialPosition})
+
+        updateCurrentPosition({})
     }
 
     //#endregion
 
     return {
-        fen,
+        startingPosition,
         dests,
         turn: turn as "white" | "black",
-        history,
+        moves: moves,
         currentMove,
-        moves,
-        updateFen,
+        playerColor: playerColor as "white" | "black",
+        movesHistory: history,
+        currentPosition,
+        viewOnly,
+        updateStartingPosition,
         move,
-        updateCurrentMove
+        updateCurrentMove,
+        undoHalfMove,
+        updatePlayerColor,
+        setViewOnly,
+        showPreviousPosition,
+        showCurrentPosition
     }
 }
