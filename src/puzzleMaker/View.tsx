@@ -46,8 +46,7 @@ export default function View ({ vault, chessjsInstance }:Props) {
             <MovesHistory
                 movesNumber={chess.currentMove?.number || 0}
                 moves={chess.moves}
-                showPreviousPosition={chess.showPreviousPosition}
-                showCurrentPosition={chess.showCurrentPosition}
+                showPosition={chess.showPosition}
             />
 
             <FenEditor

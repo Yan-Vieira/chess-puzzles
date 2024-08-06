@@ -20,4 +20,9 @@ declare namespace ChessPuzzles {
 		fen?: string,
 		moves: Move[]
 	}
+
+	type UseMovesDispatcher = React.Dispatch<React.ReducerAction<(state: ChessPuzzles.Move[], { actionType, newMove }: {
+		actionType: "PUSH" | "POP";
+		newMove?: ChessPuzzles.Move;
+	}) => ChessPuzzles.Move[]>>
 }

@@ -1,8 +1,7 @@
 interface Props {
     movesNumber: number,
     moves: ChessPuzzles.Move[],
-    showPreviousPosition: (moveNumber: number, color:"white"|"black") => void,
-    showCurrentPosition: () => void
+    showPosition: (moveCount: number, color:"white"|"black") => void,
 }
 
 const style = `
@@ -13,7 +12,7 @@ const style = `
     }
 `
 
-export default function MovesHistory ({ movesNumber, moves, showPreviousPosition, showCurrentPosition }:Props) {
+export default function MovesHistory ({ movesNumber, moves, showPosition }:Props) {
 
     return (
         <>
@@ -24,8 +23,8 @@ export default function MovesHistory ({ movesNumber, moves, showPreviousPosition
                     
                     {moves.filter(move => move.number === i + 1).map(move => (
                         <button
-                            key={move.san}
-                            onClick={() => i + 1 === movesNumber ? showCurrentPosition() : showPreviousPosition(i + 1, move.color)}
+                            key={move.count}
+                            onClick={() => showPosition(move.count, move.color)}
                         >
                             {move.san}
                         </button>
